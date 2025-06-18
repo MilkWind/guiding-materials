@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cyan Sand Flow Background</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-size: 16px;
+        }
+
+        #sand-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, hsl(180, 50%, 60%), hsl(190, 40%, 50%));
+            overflow: hidden;
+        }
+
+        .sand-particle {
+            position: absolute;
+            border-radius: 50%;
+            background-color: hsl(185, 45%, 75%);
+            pointer-events: none;
+            will-change: transform, opacity;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="sand-container">
+    </div>
+    <script>
+        const container = document.getElementById('sand-container');
+        const particles = [];
+        const NUM_PARTICLES = 300;
+        let mouse = { x: 0, y: 0, down: false };
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        // Initialize particles
+        for (let i = 0; i < NUM_PARTICLES; i++) {
+            const el = document.createElement('div');
+            el.classList.add('sand-particle');
+            container.appendChild(el);
+
+            const size = 2 + Math.random() * 4;
+            el.style.width = `${size}px`;
+            el.style.height = `${size}px`;
+
+            const depth = Math.random(); // 0 (far) to 1 (near)
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+
+            particles.push({
+                el,
+                x,
+                y,
+                vx: 0,
+                vy: 0,
+                size,
+                depth
+            });
+        }
+
+        // Handle mouse input
+        document.addEventListener('mousedown', (e) => {
+            mouse.down = true;
+            updateMousePos(e);
+        });
+        document.addEventListener('mouseup', () => mouse.down = false);
+        document.addEventListener('mousemove', (e) => {
+            if (mouse.down) updateMousePos(e);
+        });
+
+        // Handle touch input
+        container.addEventListener('touchstart', (e) => {
+            mouse.down = true;
+            updateMousePos(e.touches[0]);
+        });
+        container.addEventListener('touchend', () => mouse.down = false);
+        container.addEventListener('touchmove', (e) => {
+            if (mouse.down) updateMousePos(e.touches[0]);
+        });
+
+        function updateMousePos(e) {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        }
+
+        // Animate particles
+        function animate() {
+            for (let p of particles) {
+                // Base drift (simulate flow)
+                p.vx += 0.01 * p.depth;
+                p.vy += 0.005 * p.depth;
+
+                // Interaction force
+                if (mouse.down) {
+                    const dx = p.x - mouse.x;
+                    const dy = p.y - mouse.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 100) {
+                        const baseForce = 100 / (dist + 10);
+                        const force = baseForce * p.depth; // Stronger effect for closer particles
+
+                        p.vx += force * (dx / dist);
+                        p.vy += force * (dy / dist);
+                    }
+                }
+
+                // Apply friction
+                p.vx *= 0.95;
+                p.vy *= 0.95;
+
+                // Update position
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Wrap around edges
+                if (p.x < -10) p.x = width + 10;
+                if (p.x > width + 10) p.x = -10;
+                if (p.y < -10) p.y = height + 10;
+                if (p.y > height + 10) p.y = -10;
+
+                // Visual depth effect
+                const scale = 0.6 + 0.4 * p.depth;
+                const opacity = 0.4 + 0.6 * p.depth;
+
+                p.el.style.transform = `translate(${p.x}px, ${p.y}px) scale(${scale})`;
+                p.el.style.opacity = opacity;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+        });
+
+        animate();
+    </script>
+</body>
+
+</html>

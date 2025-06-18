@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>环形扇形悬浮菜单</title>
+    <style>
+        /* 基础样式 */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #e0f7fa;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        .circular-menu {
+            position: fixed;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4dd0e1, #00acc1);
+            box-shadow: 0 8px 16px rgba(0, 172, 193, 0.3);
+            cursor: move;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .circular-menu::before {
+            content: '☰';
+            color: white;
+            font-size: 24px;
+            transition: transform 0.3s ease;
+        }
+
+        .circular-menu.expanded::before {
+            transform: rotate(90deg);
+        }
+
+        /* 扇形菜单项 */
+        .menu-item {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            clip-path: polygon(
+                50% 50%,
+                100% 0%,
+                100% 50%
+            );
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transform-origin: top left;
+            transition: all 0.4s ease;
+            font-size: 18px;
+            color: #00acc1;
+        }
+
+        .menu-item.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 吸附引导点 */
+        .edge-guide {
+            position: fixed;
+            width: 5px;
+            height: 5px;
+            background: #00acc1;
+            opacity: 0.3;
+            z-index: 999;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <!-- 菜单容器 -->
+    <div class="circular-menu" id="circularMenu">
+        <!-- 菜单项模板 -->
+        <div class="menu-item" data-icon="📄" data-angle="0"></div>
+        <div class="menu-item" data-icon="📷" data-angle="60"></div>
+        <div class="menu-item" data-icon="🎵" data-angle="120"></div>
+        <div class="menu-item" data-icon="📁" data-angle="180"></div>
+        <div class="menu-item" data-icon="🌐" data-angle="240"></div>
+        <div class="menu-item" data-icon="⚙️" data-angle="300"></div>
+    </div>
+
+    <!-- 吸附引导点 -->
+    <div class="edge-guide" id="leftGuide" style="left: 0; top: 50%; transform: translateY(-50%);"></div>
+    <div class="edge-guide" id="rightGuide" style="right: 0; top: 50%; transform: translateY(-50%);"></div>
+    <div class="edge-guide" id="topGuide" style="left: 50%; top: 0; transform: translateX(-50%);"></div>
+    <div class="edge-guide" id="bottomGuide" style="left: 50%; bottom: 0; transform: translateX(-50%);"></div>
+
+    <script>
+        // 菜单配置
+        const menu = document.getElementById('circularMenu');
+        const items = document.querySelectorAll('.menu-item');
+        const edgeGuides = document.querySelectorAll('.edge-guide');
+        const radius = 140; // 菜单项距离中心点的半径
+        let isDragging = false;
+        let isExpanded = false;
+        let offsetX, offsetY;
+        let guideTimeout;
+        let currentEdge = null;
+
+        // 初始化菜单项位置
+        function initMenuItems() {
+            items.forEach((item, index) => {
+                const angle = parseFloat(item.getAttribute('data-angle')) || (360 / items.length) * index;
+                const rad = angle * Math.PI / 180;
+                const x = radius * Math.cos(rad);
+                const y = radius * Math.sin(rad);
+                
+                // 设置元素位置
+                item.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+                
+                // 创建clip-path
+                const clipAngle = 60; // 扇形角度
+                const startRad = (angle - clipAngle/2) * Math.PI / 180;
+                const endRad = (angle + clipAngle/2) * Math.PI / 180;
+                
+                const p1x = 50 + 50 * Math.cos(startRad);
+                const p1y = 50 + 50 * Math.sin(startRad);
+                const p2x = 50 + 50 * Math.cos(endRad);
+                const p2y = 50 + 50 * Math.sin(endRad);
+                
+                item.style.clipPath = `polygon(50% 50%, ${p1x}% ${p1y}%, ${p2x}% ${p2y}%)`;
+            });
+        }
+
+        // 拖动功能
+        menu.addEventListener('mousedown', (e) => {
+            if (isExpanded) return; // 展开状态下禁止拖动
+            isDragging = true;
+            offsetX = e.clientX - menu.offsetLeft;
+            offsetY = e.clientY - menu.offsetTop;
+            document.body.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const x = e.clientX - offsetX;
+            const y = e.clientY - offsetY;
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+            checkEdgeProximity(x, y);
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            document.body.style.cursor = 'default';
+            snapToEdge();
+        });
+
+        // 展开/收起菜单
+        menu.addEventListener('click', (e) => {
+            if (e.target.closest('.menu-item')) return; // 点击菜单项时不触发展开/收起
+            
+            isExpanded = !isExpanded;
+            menu.classList.toggle('expanded', isExpanded);
+            
+            items.forEach((item, index) => {
+                item.classList.toggle('active', isExpanded);
+                if (isExpanded) {
+                    item.style.transitionDelay = `${index * 0.05}s`;
+                } else {
+                    item.style.transitionDelay = `${(items.length - index - 1) * 0.05}s`;
+                }
+            });
+        });
+
+        // 检测边缘接近度
+        function checkEdgeProximity(x, y) {
+            const threshold = 100;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            edgeGuides.forEach(guide => guide.style.display = 'none');
+            
+            // 显示最近的引导点
+            if (x < threshold) {
+                edgeGuides[0].style.display = 'block';
+            } else if (x > windowWidth - threshold - menu.offsetWidth) {
+                edgeGuides[1].style.display = 'block';
+            }
+            
+            if (y < threshold) {
+                edgeGuides[2].style.display = 'block';
+            } else if (y > windowHeight - threshold - menu.offsetHeight) {
+                edgeGuides[3].style.display = 'block';
+            }
+        }
+
+        // 吸附到边缘
+        function snapToEdge() {
+            const x = parseInt(menu.style.left);
+            const y = parseInt(menu.style.top);
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            let targetX = x;
+            let targetY = y;
+            
+            // 判断最近的边缘
+            const edges = [
+                { side: 'left', distance: x },
+                { side: 'right', distance: windowWidth - x - menu.offsetWidth },
+                { side: 'top', distance: y },
+                { side: 'bottom', distance: windowHeight - y - menu.offsetHeight }
+            ];
+            
+            const closest = edges.reduce((a, b) => a.distance < b.distance ? a : b);
+            
+            // 设置吸附位置
+            switch(closest.side) {
+                case 'left':
+                    targetX = 0;
+                    break;
+                case 'right':
+                    targetX = windowWidth - menu.offsetWidth;
+                    break;
+                case 'top':
+                    targetY = 0;
+                    break;
+                case 'bottom':
+                    targetY = windowHeight - menu.offsetHeight;
+                    break;
+            }
+            
+            // 应用动画
+            menu.style.transition = 'all 0.3s ease';
+            menu.style.left = `${targetX}px`;
+            menu.style.top = `${targetY}px`;
+            
+            // 重置过渡效果
+            setTimeout(() => {
+                menu.style.transition = '';
+            }, 300);
+            
+            currentEdge = closest.side;
+        }
+
+        // 窗口大小变化时调整位置
+        window.addEventListener('resize', () => {
+            if (currentEdge) {
+                const menuWidth = menu.offsetWidth;
+                const menuHeight = menu.offsetHeight;
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+                
+                switch(currentEdge) {
+                    case 'left':
+                        menu.style.left = '0';
+                        break;
+                    case 'right':
+                        menu.style.left = `${windowWidth - menuWidth}px`;
+                        break;
+                    case 'top':
+                        menu.style.top = '0';
+                        break;
+                    case 'bottom':
+                        menu.style.top = `${windowHeight - menuHeight}px`;
+                        break;
+                }
+            }
+        });
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            initMenuItems();
+        });
+    </script>
+</body>
+</html>
