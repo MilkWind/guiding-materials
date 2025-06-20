@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0f0f1a 0%, #000000 100%);
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .glass-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s;
+    }
+
+    .glass-content {
+      color: white;
+      max-width: 800px;
+      text-align: center;
+    }
+
+    .glass-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 8px;
+      transition: color 0.3s;
+    }
+
+    .glass-desc {
+      font-size: 0.95em;
+      line-height: 1.4;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="skillGalaxy"></canvas>
+  <div class="glass-panel" id="infoPanel">
+    <div class="glass-content">
+      <div class="glass-title" id="panelTitle">MilkWind 全栈工程师</div>
+      <div class="glass-desc" id="panelDesc">精通全栈开发技术，具备跨平台架构能力，擅长AI技术整合与高性能系统优化</div>
+    </div>
+  </div>
+
+  <script>
+    // 技能数据（示例精简版）
+    const skillData = {
+      "skills": [
+        {
+          "category": "AI工具应用",
+          "description": "熟悉Cursor、Trae等AI编辑器的使用，掌握MCP（Model, Controller, Provider）概念与实践方式..."
+        },
+        {
+          "category": "Java开发",
+          "description": "熟悉Java基础语法及面向对象编程特性，熟悉八种基本数据类型及其应用场景..."
+        },
+        {
+          "category": "架构设计",
+          "description": "具备B/S架构项目实战经验，熟悉单体架构向微服务架构演进过程..."
+        },
+        {
+          "category": "Vue框架",
+          "description": "理解Vue响应式系统原理（依赖收集与更新机制），熟练使用Vue Router实现动态路由加载..."
+        },
+        {
+          "category": "网络通信",
+          "description": "具备RESTful API交互经验（GET/POST/PUT/DELETE标准使用）..."
+        },
+        {
+          "category": "版本控制",
+          "description": "精通Git分布式版本控制，在GitHub/Gitee平台贡献超50个开源项目..."
+        }
+      ]
+    };
+
+    // 星系配置
+    const galaxyConfig = {
+      core: {
+        x: 0.5,
+        y: 0.5,
+        radius: 60,
+        color: '#C0C0C0', // 银色
+        glow: 'rgba(192,192,192,0.7)'
+      },
+      orbitCount: 6,
+      orbitGap: 80,
+      minOrbitRadius: 120,
+      maxOrbitRadius: 340
+    };
+
+    // 初始化画布
+    const canvas = document.getElementById('skillGalaxy');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+
+    function resizeCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // 计算轨道半径
+    function calculateOrbitRadius(index) {
+      const totalGap = galaxyConfig.orbitGap * (galaxyConfig.orbitCount - 1);
+      const availableSpace = Math.min(width, height) * 0.4 - galaxyConfig.core.radius;
+
+      return galaxyConfig.core.radius + galaxyConfig.orbitGap +
+        (availableSpace - totalGap) * (index / (galaxyConfig.orbitCount - 1)) +
+        galaxyConfig.orbitGap * index;
+    }
+
+    // 玻璃风格行星类
+    class GlassPlanet {
+      constructor(config, orbitIndex) {
+        this.config = config;
+        this.orbitIndex = orbitIndex;
+        this.orbitRadius = calculateOrbitRadius(orbitIndex);
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = 0.0005 + Math.random() * 0.001;
+        this.baseSpeed = this.speed;
+        this.isPaused = false;
+        this.isDragging = false;
+        this.dragStartAngle = 0;
+        this.color = 'rgba(255, 255, 255, 0.3)';
+        this.borderColor = 'rgba(255, 255, 255, 0.2)';
+      }
+
+      get x() {
+        return width * galaxyConfig.core.x + Math.cos(this.angle) * this.orbitRadius;
+      }
+
+      get y() {
+        return height * galaxyConfig.core.y + Math.sin(this.angle) * this.orbitRadius;
+      }
+
+      update() {
+        if (!this.isPaused && !this.isDragging) {
+          this.angle += this.speed;
+        }
+      }
+
+      draw() {
+        // 绘制轨道（玻璃质感）
+        ctx.beginPath();
+        ctx.arc(width * galaxyConfig.core.x, height * galaxyConfig.core.y,
+          this.orbitRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = this.borderColor;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // 绘制行星（玻璃效果）
+        const gradient = ctx.createRadialGradient(
+          this.x, this.y, 0,
+          this.x, this.y, this.radius
+        );
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+        gradient.addColorStop(0.3, this.color);
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0.1)');
+
+        ctx.beginPath();
+        ctx.fillStyle = gradient;
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 绘制边框
+        ctx.beginPath();
+        ctx.strokeStyle = this.borderColor;
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 绘制技能名称
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.config.category, this.x, this.y);
+      }
+
+      get radius() {
+        return 22 + this.config.category.length * 1.2;
+      }
+
+      isHovered(mx, my) {
+        const dx = mx - this.x;
+        const dy = my - this.y;
+        return Math.sqrt(dx * dx + dy * dy) < this.radius + 5;
+      }
+
+      startDrag(mx, my) {
+        this.isDragging = true;
+        this.isPaused = true;
+        this.dragStartAngle = Math.atan2(
+          my - height * galaxyConfig.core.y,
+          mx - width * galaxyConfig.core.x
+        );
+      }
+
+      drag(mx, my) {
+        if (!this.isDragging) return;
+
+        const angle = Math.atan2(
+          my - height * galaxyConfig.core.y,
+          mx - width * galaxyConfig.core.x
+        );
+        this.angle = angle;
+      }
+
+      endDrag() {
+        this.isDragging = false;
+        this.isPaused = false;
+      }
+    }
+
+    // 初始化技能行星
+    let planets = [];
+    let isSunHovered = false;
+
+    function initPlanets() {
+      planets = [];
+      skillData.skills.forEach((skill, i) => {
+        planets.push(new GlassPlanet(skill, i % galaxyConfig.orbitCount));
+      });
+    }
+
+    // 工具函数
+    function getMousePos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+      };
+    }
+
+    // 交互事件
+    let hoveredPlanet = null;
+    let draggedPlanet = null;
+
+    canvas.addEventListener('mousemove', (e) => {
+      const pos = getMousePos(e);
+      hoveredPlanet = null;
+
+      // 检测太阳悬停
+      const coreX = width * galaxyConfig.core.x;
+      const coreY = height * galaxyConfig.core.y;
+      const sunRadius = galaxyConfig.core.radius + 20;
+      const dx = pos.x - coreX;
+      const dy = pos.y - coreY;
+      isSunHovered = Math.sqrt(dx * dx + dy * dy) < sunRadius;
+
+      if (isSunHovered) {
+        updateInfoPanel("MilkWind 全栈工程师", "精通全栈开发技术，具备跨平台架构能力，擅长AI技术整合与高性能系统优化");
+      }
+
+      // 检测行星悬停
+      planets.forEach(planet => {
+        if (planet.isHovered(pos.x, pos.y)) {
+          hoveredPlanet = planet;
+          planet.isPaused = true;
+          updateInfoPanel(planet.config.category, planet.config.description);
+        } else {
+          planet.isPaused = false;
+        }
+      });
+
+      if (draggedPlanet) {
+        draggedPlanet.drag(pos.x, pos.y);
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      planets.forEach(p => p.isPaused = false);
+      hoveredPlanet = null;
+      isSunHovered = false;
+      updateInfoPanel("MilkWind 全栈工程师", "精通全栈开发技术，具备跨平台架构能力，擅长AI技术整合与高性能系统优化");
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      const pos = getMousePos(e);
+      planets.forEach(planet => {
+        if (planet.isHovered(pos.x, pos.y)) {
+          draggedPlanet = planet;
+          planet.startDrag(pos.x, pos.y);
+        }
+      });
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (draggedPlanet) {
+        draggedPlanet.endDrag();
+        draggedPlanet = null;
+      }
+    });
+
+    // 信息面板更新
+    function updateInfoPanel(title, description) {
+      const titleElement = document.getElementById('panelTitle');
+      const descElement = document.getElementById('panelDesc');
+
+      titleElement.textContent = title;
+      descElement.textContent = description;
+    }
+
+    // 动画循环
+    function animate() {
+      ctx.fillStyle = '#00000022';
+      ctx.fillRect(0, 0, width, height);
+
+      // 绘制核心（银色太阳）
+      const coreX = width * galaxyConfig.core.x;
+      const coreY = height * galaxyConfig.core.y;
+
+      // 绘制太阳发光效果
+      const glowGradient = ctx.createRadialGradient(coreX, coreY, 0, coreX, coreY, galaxyConfig.core.radius + 30);
+      glowGradient.addColorStop(0, galaxyConfig.core.glow);
+      glowGradient.addColorStop(1, 'transparent');
+
+      ctx.fillStyle = glowGradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // 绘制太阳本体
+      const sunGradient = ctx.createRadialGradient(
+        coreX - 10,
+        coreY - 10,
+        0,
+        coreX,
+        coreY,
+        galaxyConfig.core.radius
+      );
+      sunGradient.addColorStop(0, '#E0E0E0');
+      sunGradient.addColorStop(1, galaxyConfig.core.color);
+
+      ctx.beginPath();
+      ctx.fillStyle = sunGradient;
+      ctx.arc(coreX, coreY, galaxyConfig.core.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 绘制高光
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.arc(coreX - 15, coreY - 15, galaxyConfig.core.radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 绘制行星
+      planets.forEach(p => {
+        p.update();
+        p.draw();
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    initPlanets();
+    animate();
+  </script>
+</body>
+
+</html>
