@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Rain Effect</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let mousePos = { x: 0, y: 0 };
+        let particles = [];
+        let animationId;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Generate particles grid
+            const binaryChars = ['0', '1'];
+            const gridSize = 20;
+            particles = [];
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    particles.push({
+                        x,
+                        y,
+                        char: binaryChars[Math.floor(Math.random() * 2)]
+                    });
+                }
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas(); // Initial setup
+
+        // Mouse movement handler
+        function updateMousePos(e) {
+            mousePos.x = e.clientX;
+            mousePos.y = e.clientY;
+        }
+        document.addEventListener('mousemove', updateMousePos);
+
+        // Character update timer
+        setInterval(() => {
+            particles.forEach(p => {
+                p.char = ['0', '1'][Math.floor(Math.random() * 2)];
+            });
+        }, 300);
+
+        // Animation loop
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Text styling
+            ctx.fillStyle = 'rgba(0, 255, 255, 1)';
+            ctx.font = '14px monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+
+            // Draw characters
+            particles.forEach(p => {
+                ctx.fillText(p.char, p.x, p.y);
+            });
+
+            // Create mask
+            ctx.globalCompositeOperation = 'destination-in';
+            const gradient = ctx.createRadialGradient(
+                mousePos.x, mousePos.y, 0,
+                mousePos.x, mousePos.y, 200
+            );
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Reset composite mode
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        animate();
+
+        // Cleanup listeners
+        window.addEventListener('beforeunload', () => {
+            window.removeEventListener('resize', resizeCanvas);
+            document.removeEventListener('mousemove', updateMousePos);
+            cancelAnimationFrame(animationId);
+        });
+    </script>
+</body>
+</html>

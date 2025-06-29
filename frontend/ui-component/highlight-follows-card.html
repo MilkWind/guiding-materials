@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>卡片边框跟随高亮</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+        }
+
+        .card-container {
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            gap: 10px;
+        }
+
+        .card {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            box-sizing: border-box;
+            border-radius: 4px;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(closest-side circle, rgba(155, 232, 255, 1) 0%, transparent 100%);
+            z-index: 2;
+            left: var(--x, 0);
+            top: var(--y, 0);
+            transform: translate(-50%, -50%);
+            border-radius: inherit;
+        }
+
+        .inner {
+            position: absolute;
+            inset: 2px;
+            background: rgb(255, 255, 255);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: inherit;
+            z-index: 3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card-container">
+        <div class="card">
+            <div class="inner">卡片1</div>
+        </div>
+        <div class="card">
+            <div class="inner">卡片2</div>
+        </div>
+        <div class="card">
+            <div class="inner">卡片3</div>
+        </div>
+        <div class="card">
+            <div class="inner">卡片4</div>
+        </div>
+        <div class="card">
+            <div class="inner">卡片5</div>
+        </div>
+        <div class="card">
+            <div class="inner">卡片6</div>
+        </div>
+    </div>
+
+    <script>
+        const container = document.querySelector('.card-container')
+        const cards = document.querySelectorAll('.card')
+
+        container.onmousemove = function (e) {
+            for (const card of cards) {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                // console.log("e.clientX: ", e.clientX)
+                // console.log("e.clientY: ", e.clientY)
+                // console.log("rect.left: ", rect.left)
+                // console.log("rect.top: ", rect.top)
+                card.style.setProperty('--x', `${x}px`);
+                card.style.setProperty('--y', `${y}px`);
+            }
+        }
+    </script>
+</body>
+
+</html>
